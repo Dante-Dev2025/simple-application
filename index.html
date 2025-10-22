@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Kasir Sederhana (Versi Akhir)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    h1, h2 { color: #333; }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px 0;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    input {
+      padding: 8px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-top: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .result {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    hr {
+      margin-top: 15px;
+      border: none;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h1>Aplikasi Kasir</h1>
+
+  <!-- Bagian Buat Pesanan -->
+  <div id="order-screen" class="card">
+    <h2>Buat Pesanan</h2>
+    <input type="text" id="namaPesanan" placeholder="Nama Pesanan">
+    <input type="number" id="hargaPesanan" placeholder="Harga (Rp)">
+    <button onclick="tambahPesanan()">+ Tambah Pesanan</button>
+
+    <div id="daftarPesanan"></div>
+  </div>
+
+  <!-- Bagian Transaksi -->
+  <div id="transaksi-screen" class="card">
+    <h2>Lakukan Transaksi</h2>
+    <div id="pilihanTransaksi"></div>
+    <button onclick="hitungTotal()">Hitung Total</button>
+    <div class="result" id="hasilTransaksi"></div>
+  </div>
+
+  <script>
+    let pesanan = [];
+
+    function tambahPesanan() {
+      const nama = document.getElementById("namaPesanan").value.trim();
+      const harga = parseInt(document.getElementById("hargaPesanan").value);
+
+      if (!nama || isNaN(harga)) {
+        alert("Isi nama dan harga dengan benar!");
+        return;
+      }
+
+      pesanan.push({ nama, harga });
+      document.getElementById("namaPesanan").value = "";
+      document.getElementById("hargaPesanan").value = "";
+      tampilkanPesanan();
+      perbaruiTransaksi();
+    }
+
+    function tampilkanPesanan() {
+      const container = document.getElementById("daftarPesanan");
+      if (pesanan.length === 0) {
+        container.innerHTML = "<p>Belum ada pesanan.</p>";
+        return;
+      }
+
+      container.innerHTML = "<h3>Daftar Pesanan:</h3>";
+      pesanan.forEach((p, index) => {
+        container.innerHTML += `<p>${index + 1}. ${p.nama} - Rp${p.harga.toLocaleString()}</p>`;
+      });
+    }
+
+    function perbaruiTransaksi() {
+      const container = document.getElementById("pilihanTransaksi");
+      if (pesanan.length === 0) {
+        container.innerHTML = "<p>Tidak ada pesanan untuk transaksi.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      pesanan.forEach((p, index) => {
+        container.innerHTML += `
+          <div>
+            <label>${p.nama} (Rp${p.harga.toLocaleString()})</label>
+            <input type="number" id="qty-${index}" placeholder="Jumlah" min="0">
+          </div>
+        `;
+      });
+    }
+
+    function hitungTotal() {
+      if (pesanan.length === 0) {
+        alert("Belum ada pesanan yang dimasukkan!");
+        return;
+      }
+
+      let total = 0;
+      let hasilHTML = "<h3>Rincian Transaksi:</h3>";
+
+      pesanan.forEach((p, index) => {
+        const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+        if (qty > 0) {
+          const subtotal = p.harga * qty;
+          hasilHTML += `<p>${p.nama} - Rp${p.harga.toLocaleString()} x ${qty} = Rp${subtotal.toLocaleString()}</p>`;
+          total += subtotal;
+        }
+      });
+
+      hasilHTML += `<hr><p>Total: <strong>Rp${total.toLocaleString()}</strong></p>`;
+      document.getElementById("hasilTransaksi").innerHTML = hasilHTML;
+    }
+
+    // Saat pertama kali halaman dibuka
+    tampilkanPesanan();
+    perbaruiTransaksi();
+  </script>
+</body>
+</html>
