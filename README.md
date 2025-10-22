@@ -1,3 +1,5 @@
+# Web Kasir – Sistem Transaksi dan Nota Otomatis
+
 # Deskripsi
 Web Kasir adalah aplikasi berbasis web yang berfungsi sebagai sistem pencatatan transaksi sederhana untuk membantu pelaku UMKM atau toko kecil dalam mengelola pesanan, menghitung total transaksi, serta mencetak nota pembelian secara otomatis dalam format PDF.
 
