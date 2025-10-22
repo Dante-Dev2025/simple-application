@@ -2,17 +2,15 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Kasir Sederhana (Versi Akhir)</title>
+  <title>Aplikasi Kasir dengan Ekspor PDF & CSV</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       background-color: #f8f9fa;
       padding: 20px;
     }
-
     h1, h2 { color: #333; }
-
     button {
       background-color: #4CAF50;
       color: white;
@@ -20,20 +18,15 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
-      margin: 5px 0;
+      margin: 5px 5px 5px 0;
     }
-
-    button:hover {
-      background-color: #45a049;
-    }
-
+    button:hover { background-color: #45a049; }
     input {
       padding: 8px;
       margin: 5px;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
-
     .card {
       background: white;
       padding: 20px;
@@ -41,43 +34,47 @@
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-
     .result {
       margin-top: 15px;
       font-weight: bold;
     }
-
-    hr {
-      margin-top: 15px;
-      border: none;
-      border-top: 1px solid #ddd;
-    }
+    hr { margin-top: 15px; border: none; border-top: 1px solid #ddd; }
   </style>
 </head>
 <body>
   <h1>Aplikasi Kasir</h1>
 
-  <!-- Bagian Buat Pesanan -->
+  <!-- Buat Pesanan -->
   <div id="order-screen" class="card">
     <h2>Buat Pesanan</h2>
     <input type="text" id="namaPesanan" placeholder="Nama Pesanan">
     <input type="number" id="hargaPesanan" placeholder="Harga (Rp)">
     <button onclick="tambahPesanan()">+ Tambah Pesanan</button>
 
-    <div id="daftarPesanan"></div>
+    <div id="daftarPesanan" style="margin-top: 15px;"></div>
+
+    <!-- Import & Export CSV pindah ke bawah -->
+    <hr>
+    <div style="margin-top: 10px;">
+      <button onclick="exportCSV()">⬇️ Ekspor CSV</button>
+      <button onclick="document.getElementById('importCSV').click()">⬆️ Import CSV</button>
+      <input type="file" id="importCSV" accept=".csv" onchange="importCSV(event)" style="display:none;">
+    </div>
   </div>
 
-  <!-- Bagian Transaksi -->
+  <!-- Transaksi -->
   <div id="transaksi-screen" class="card">
-    <h2>Lakukan Transaksi</h2>
+    <h2>Transaksi</h2>
     <div id="pilihanTransaksi"></div>
     <button onclick="hitungTotal()">Hitung Total</button>
+    <button onclick="downloadPDF()">💾 Unduh PDF</button>
     <div class="result" id="hasilTransaksi"></div>
   </div>
 
   <script>
     let pesanan = [];
 
+    // Tambah pesanan baru
     function tambahPesanan() {
       const nama = document.getElementById("namaPesanan").value.trim();
       const harga = parseInt(document.getElementById("hargaPesanan").value);
@@ -94,48 +91,47 @@
       perbaruiTransaksi();
     }
 
+    // Tampilkan daftar pesanan
     function tampilkanPesanan() {
       const container = document.getElementById("daftarPesanan");
       if (pesanan.length === 0) {
         container.innerHTML = "<p>Belum ada pesanan.</p>";
         return;
       }
-
       container.innerHTML = "<h3>Daftar Pesanan:</h3>";
-      pesanan.forEach((p, index) => {
-        container.innerHTML += `<p>${index + 1}. ${p.nama} - Rp${p.harga.toLocaleString()}</p>`;
+      pesanan.forEach((p, i) => {
+        container.innerHTML += `<p>${i + 1}. ${p.nama} - Rp${p.harga.toLocaleString()}</p>`;
       });
     }
 
+    // Perbarui daftar transaksi
     function perbaruiTransaksi() {
       const container = document.getElementById("pilihanTransaksi");
       if (pesanan.length === 0) {
         container.innerHTML = "<p>Tidak ada pesanan untuk transaksi.</p>";
         return;
       }
-
       container.innerHTML = "";
-      pesanan.forEach((p, index) => {
+      pesanan.forEach((p, i) => {
         container.innerHTML += `
           <div>
             <label>${p.nama} (Rp${p.harga.toLocaleString()})</label>
-            <input type="number" id="qty-${index}" placeholder="Jumlah" min="0">
-          </div>
-        `;
+            <input type="number" id="qty-${i}" placeholder="Jumlah" min="0">
+          </div>`;
       });
     }
 
+    // Hitung total transaksi
     function hitungTotal() {
       if (pesanan.length === 0) {
         alert("Belum ada pesanan yang dimasukkan!");
         return;
       }
-
       let total = 0;
       let hasilHTML = "<h3>Rincian Transaksi:</h3>";
 
-      pesanan.forEach((p, index) => {
-        const qty = parseInt(document.getElementById(`qty-${index}`).value) || 0;
+      pesanan.forEach((p, i) => {
+        const qty = parseInt(document.getElementById(`qty-${i}`).value) || 0;
         if (qty > 0) {
           const subtotal = p.harga * qty;
           hasilHTML += `<p>${p.nama} - Rp${p.harga.toLocaleString()} x ${qty} = Rp${subtotal.toLocaleString()}</p>`;
@@ -147,7 +143,66 @@
       document.getElementById("hasilTransaksi").innerHTML = hasilHTML;
     }
 
-    // Saat pertama kali halaman dibuka
+    // Ekspor CSV
+    function exportCSV() {
+      if (pesanan.length === 0) {
+        alert("Tidak ada pesanan untuk diekspor!");
+        return;
+      }
+      const header = "Nama,Harga\n";
+      const rows = pesanan.map(p => `${p.nama},${p.harga}`).join("\n");
+      const blob = new Blob([header + rows], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "daftar_pesanan.csv";
+      a.click();
+    }
+
+    // Import CSV
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const lines = e.target.result.split("\n").slice(1);
+        pesanan = []; // reset daftar pesanan sebelum import baru
+        lines.forEach(line => {
+          const [nama, harga] = line.split(",");
+          if (nama && harga) pesanan.push({ nama: nama.trim(), harga: parseInt(harga) });
+        });
+        tampilkanPesanan();
+        perbaruiTransaksi();
+      };
+      reader.readAsText(file);
+    }
+
+    // Unduh PDF
+    async function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const hasil = document.getElementById("hasilTransaksi").innerText.trim();
+
+      if (!hasil) {
+        alert("Tidak ada hasil transaksi untuk diunduh!");
+        return;
+      }
+
+      doc.setFontSize(14);
+      doc.text("Nota Transaksi", 105, 15, { align: "center" });
+      doc.setFontSize(12);
+
+      const lines = hasil.split("\n");
+      let y = 30;
+      lines.forEach(line => {
+        doc.text(line, 15, y);
+        y += 10;
+      });
+
+      doc.save("nota_transaksi.pdf");
+    }
+
+    // Inisialisasi awal
     tampilkanPesanan();
     perbaruiTransaksi();
   </script>
