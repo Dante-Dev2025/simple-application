@@ -2,12 +2,16 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Aplikasi Kasir dengan Ekspor PDF & CSV</title>
+  <title>Web Kasir</title>
+
+  <!-- jsPDF dan AutoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f8f9fa;
+      background-color: #edf767;
       padding: 20px;
     }
     h1, h2 { color: #333; }
@@ -39,10 +43,34 @@
       font-weight: bold;
     }
     hr { margin-top: 15px; border: none; border-top: 1px solid #ddd; }
+
+    /* Tabel hasil transaksi */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #e8f5e9;
+      text-align: center;
+    }
+    td:nth-child(3), td:nth-child(5), th:nth-child(3), th:nth-child(5) {
+      text-align: right;
+    }
+    .total-row td {
+      font-weight: bold;
+      background-color: #f0f0f0;
+    }
   </style>
 </head>
 <body>
-  <h1>Aplikasi Kasir</h1>
+  <h1>Web Kasir - by Mumtaaz</h1>
 
   <!-- Buat Pesanan -->
   <div id="order-screen" class="card">
@@ -53,7 +81,6 @@
 
     <div id="daftarPesanan" style="margin-top: 15px;"></div>
 
-    <!-- Import & Export CSV pindah ke bawah -->
     <hr>
     <div style="margin-top: 10px;">
       <button onclick="exportCSV()">⬇️ Ekspor CSV</button>
@@ -67,23 +94,26 @@
     <h2>Transaksi</h2>
     <div id="pilihanTransaksi"></div>
     <button onclick="hitungTotal()">Hitung Total</button>
-    <button onclick="downloadPDF()">💾 Unduh PDF</button>
+
+    <!-- Hasil transaksi -->
     <div class="result" id="hasilTransaksi"></div>
+
+    <!-- Tombol unduh PDF dipindah ke bawah -->
+    <div style="margin-top: 15px;">
+      <button onclick="downloadPDF()">💾 Unduh PDF</button>
+    </div>
   </div>
 
   <script>
     let pesanan = [];
 
-    // Tambah pesanan baru
     function tambahPesanan() {
       const nama = document.getElementById("namaPesanan").value.trim();
       const harga = parseInt(document.getElementById("hargaPesanan").value);
-
       if (!nama || isNaN(harga)) {
         alert("Isi nama dan harga dengan benar!");
         return;
       }
-
       pesanan.push({ nama, harga });
       document.getElementById("namaPesanan").value = "";
       document.getElementById("hargaPesanan").value = "";
@@ -91,7 +121,6 @@
       perbaruiTransaksi();
     }
 
-    // Tampilkan daftar pesanan
     function tampilkanPesanan() {
       const container = document.getElementById("daftarPesanan");
       if (pesanan.length === 0) {
@@ -104,7 +133,6 @@
       });
     }
 
-    // Perbarui daftar transaksi
     function perbaruiTransaksi() {
       const container = document.getElementById("pilihanTransaksi");
       if (pesanan.length === 0) {
@@ -121,29 +149,55 @@
       });
     }
 
-    // Hitung total transaksi
     function hitungTotal() {
       if (pesanan.length === 0) {
         alert("Belum ada pesanan yang dimasukkan!");
         return;
       }
       let total = 0;
-      let hasilHTML = "<h3>Rincian Transaksi:</h3>";
-
+      let tabelHTML = `
+        <h3>Rincian Transaksi:</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Barang</th>
+              <th>Harga</th>
+              <th>Jumlah</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      let no = 1;
       pesanan.forEach((p, i) => {
         const qty = parseInt(document.getElementById(`qty-${i}`).value) || 0;
         if (qty > 0) {
           const subtotal = p.harga * qty;
-          hasilHTML += `<p>${p.nama} - Rp${p.harga.toLocaleString()} x ${qty} = Rp${subtotal.toLocaleString()}</p>`;
           total += subtotal;
+          tabelHTML += `
+            <tr>
+              <td>${no}</td>
+              <td>${p.nama}</td>
+              <td>Rp${p.harga.toLocaleString()}</td>
+              <td>${qty}</td>
+              <td>Rp${subtotal.toLocaleString()}</td>
+            </tr>`;
+          no++;
         }
       });
 
-      hasilHTML += `<hr><p>Total: <strong>Rp${total.toLocaleString()}</strong></p>`;
-      document.getElementById("hasilTransaksi").innerHTML = hasilHTML;
+      tabelHTML += `
+          <tr class="total-row">
+            <td colspan="4">Total</td>
+            <td>Rp${total.toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>`;
+
+      document.getElementById("hasilTransaksi").innerHTML = tabelHTML;
     }
 
-    // Ekspor CSV
     function exportCSV() {
       if (pesanan.length === 0) {
         alert("Tidak ada pesanan untuk diekspor!");
@@ -159,14 +213,13 @@
       a.click();
     }
 
-    // Import CSV
     function importCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = e => {
         const lines = e.target.result.split("\n").slice(1);
-        pesanan = []; // reset daftar pesanan sebelum import baru
+        pesanan = []; 
         lines.forEach(line => {
           const [nama, harga] = line.split(",");
           if (nama && harga) pesanan.push({ nama: nama.trim(), harga: parseInt(harga) });
@@ -177,32 +230,77 @@
       reader.readAsText(file);
     }
 
-    // Unduh PDF
     async function downloadPDF() {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const hasil = document.getElementById("hasilTransaksi").innerText.trim();
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+      const marginLeft = 10;
+      const pageWidth = 148;
+      const rightEdge = pageWidth - marginLeft;
+      const tableWidth = rightEdge - marginLeft;
+      const cellHeight = 8;
 
-      if (!hasil) {
-        alert("Tidak ada hasil transaksi untuk diunduh!");
-        return;
-      }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("NOTA KONTAN", pageWidth / 2, 15, { align: "center" });
 
-      doc.setFontSize(14);
-      doc.text("Nota Transaksi", 105, 15, { align: "center" });
-      doc.setFontSize(12);
+      const today = new Date();
+      const tanggal = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Tanggal: ${tanggal}`, marginLeft, 25);
+      doc.line(marginLeft, 28, rightEdge, 28);
 
-      const lines = hasil.split("\n");
-      let y = 30;
-      lines.forEach(line => {
-        doc.text(line, 15, y);
-        y += 10;
+      let startY = 40;
+      doc.setDrawColor(0);
+      doc.setFillColor(146, 208, 80);
+      doc.rect(marginLeft, startY, tableWidth, cellHeight, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      const colWidths = [10, 50, 25, 20, 25];
+      const headers = ["No.", "Nama Barang", "Harga", "Jumlah", "Subtotal"];
+      let x = marginLeft;
+      headers.forEach((h, i) => {
+        doc.text(h, x + 2, startY + 5);
+        x += colWidths[i];
       });
 
-      doc.save("nota_transaksi.pdf");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      let y = startY + cellHeight;
+      let total = 0;
+      let no = 1;
+
+      pesanan.forEach((p, i) => {
+        const qty = parseInt(document.getElementById(`qty-${i}`).value) || 0;
+        if (qty > 0) {
+          const subtotal = p.harga * qty;
+          total += subtotal;
+          let x = marginLeft;
+          const rowData = [String(no), p.nama, `Rp${p.harga.toLocaleString()}`, String(qty), `Rp${subtotal.toLocaleString()}`];
+          doc.rect(marginLeft, y, tableWidth, cellHeight);
+          rowData.forEach((text, j) => {
+            doc.text(text, x + 2, y + 5);
+            x += colWidths[j];
+          });
+          y += cellHeight;
+          no++;
+        }
+      });
+
+      doc.setFont("helvetica", "bold");
+      doc.rect(marginLeft, y, tableWidth, cellHeight);
+      doc.text("TOTAL", marginLeft + 2, y + 5);
+      doc.text(`Rp${total.toLocaleString()}`, rightEdge - 2, y + 5, { align: "right" });
+      y += cellHeight + 10;
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text("Barang yang sudah dibeli tidak dapat ditukar / dikembalikan", marginLeft, y);
+
+      doc.save(`Nota_Kontan_${tanggal}.pdf`);
     }
 
-    // Inisialisasi awal
     tampilkanPesanan();
     perbaruiTransaksi();
   </script>
